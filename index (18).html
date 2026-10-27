@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>轻记 · 每日体重</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text-main: #1d2129;
+      --text-sub: #86909c;
+      --border: #e5e6eb;
+      --primary: #2b5aed;
+      --primary-light: #e8f0ff;
+      --down-color: #00b42a; /* 体重下降：清新绿 */
+      --down-bg: #e8ffea;
+      --up-color: #f53f3f;   /* 体重上升：柔和红/橙 */
+      --up-bg: #ffece8;
+      --radius: 16px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 24px 16px 60px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* 顶部标题栏 */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 4px 8px;
+    }
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .brand h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    .brand span {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+    .unit-toggle {
+      font-size: 12px;
+      color: var(--text-sub);
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .unit-toggle:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* 通用卡片 */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    /* 1. 今日录入卡片 */
+    .QuickEntry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .date-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .today-tag {
+      font-size: 11px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 600;
+    }
+    .jump-today-btn {
+      font-size: 12px;
+      color: var(--primary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: none;
+    }
+    .jump-today-btn.visible {
+      display: inline-block;
+    }
+
+    .entry-form {
+      display: grid;
+      grid-template-columns: 130px 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    @media (max-width: 500px) {
+      .entry-form {
+        grid-template-columns: 1fr 1fr;
+      }
+      .entry-submit {
+        grid-column: span 2;
+      }
+    }
+
+    .input-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-box input {
+      width: 100%;
+      padding: 11px 12px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.2s;
+      background: #fafafa;
+    }
+    .input-box input:focus {
+      border-color: var(--primary);
+      background: #fff;
+    }
+    .input-box .weight-input {
+      font-size: 18px;
+      font-weight: 600;
+      padding-right: 36px;
+    }
+    .input-suffix {
+      position: absolute;
+      right: 12px;
+      font-size: 13px;
+      color: var(--text-sub);
+      pointer-events: none;
+    }
+    .note-row {
+      margin-top: 10px;
+    }
+    .note-row input {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 13px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      outline: none;
+      color: var(--text-main);
+    }
+    .note-row input:focus {
+      border-style: solid;
+      border-color: var(--primary);
+    }
+
+    .entry-submit {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .entry-submit:hover {
+      opacity: 0.92;
+    }
+
+    /* 2. 区间统计与趋势卡片 */
+    .range-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .tabs {
+      display: flex;
+      background: var(--bg);
+      padding: 3px;
+      border-radius: 10px;
+      gap: 2px;
+    }
+    .tab-btn {
+      border: none;
+      background: transparent;
+      padding: 5px 12px;
+      font-size: 12px;
+      color: var(--text-sub);
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .tab-btn.active {
+      background: var(--card);
+      color: var(--text-main);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    /* 核心指标三宫格 */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .metric-item {
+      background: #f9fafb;
+      padding: 12px 14px;
+      border-radius: 12px;
+    }
+    .metric-label {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+    }
+    .metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .metric-unit {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-sub);
+    }
+    .metric-sub {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+    .tag-down {
+      color: var(--down-color);
+    }
+    .tag-up {
+      color: var(--up-color);
+    }
+
+    /* SVG 趋势图 */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 230px;
+      user-select: none;
+    }
+    svg.chart-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .chart-legend {
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 6px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+    .legend-line {
+      width: 14px;
+      height: 2px;
+      background: #ff9a2e;
+    }
+
+    /* 悬浮提示 Tooltip */
+    .chart-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(29, 33, 41, 0.92);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+      transform: translate(-50%, -110%);
+      opacity: 0;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    /* 3. 历史流水列表 */
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      divide-y: 1px solid var(--border);
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 4px;
+      border-bottom: 1px solid #f2f3f5;
+      font-size: 14px;
+    }
+    .history-item:last-child {
+      border-bottom: none;
+    }
+    .history-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .history-date {
+      font-weight: 500;
+      color: var(--text-main);
+      min-width: 88px;
+    }
+    .history-note {
+      font-size: 12px;
+      color: var(--text-sub);
+      background: var(--bg);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .history-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .history-weight {
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .diff-pill {
+      font-size: 12px;
+      padding: 2px 7px;
+      border-radius: 6px;
+      min-width: 54px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .diff-down {
+      background: var(--down-bg);
+      color: var(--down-color);
+    }
+    .diff-up {
+      background: var(--up-bg);
+      color: var(--up-color);
+    }
+    .diff-flat {
+      background: var(--bg);
+      color: var(--text-sub);
+    }
+    .delete-btn {
+      border: none;
+      background: none;
+      color: #c9cdd4;
+      cursor: pointer;
+      font-size: 15px;
+      padding: 2px 4px;
+    }
+    .delete-btn:hover {
+      color: var(--up-color);
+    }
+
+    /* 底部工具栏 */
+    .footer-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-sub);
+      padding: 0 4px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tool-links {
+      display: flex;
+      gap: 12px;
+    }
+    .tool-btn {
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      cursor: pointer;
+      font-size: 12px;
+      text-decoration: underline;
+    }
+    .tool-btn:hover {
+      color: var(--primary);
+    }
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-sub);
+      font-size: 13px;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 顶部标题 -->
+  <header>
+    <div class="brand">
+      <h1>轻记</h1>
+      <span>每日体重趋势</span>
+    </div>
+    <button class="unit-toggle" id="unitToggle" title="点击切换单位">单位: kg</button>
+  </header>
+
+  <!-- 1. 今日快速打卡（默认锁定今天） -->
+  <section class="card">
+    <div class="QuickEntry-header">
+      <div class="date-badge">
+        <span id="entryTitle">今日记录</span>
+        <span class="today-tag" id="todayBadge">今天</span>
+      </div>
+      <button class="jump-today-btn" id="jumpTodayBtn">↺ 回到今日</button>
+    </div>
+
+    <form class="entry-form" id="weightForm">
+      <div class="input-box">
+        <input type="date" id="dateInput" required />
+      </div>
+      <div class="input-box">
+        <input
+          type="number"
+          step="0.05"
+          min="20"
+          max="300"
+          id="weightInput"
+          class="weight-input"
+          placeholder="0.0"
+          required
+        />
+        <span class="input-suffix" id="inputUnitLabel">kg</span>
+      </div>
+      <button type="submit" class="entry-submit" id="submitBtn">记录今日</button>
+    </form>
+    <div class="note-row">
+      <input type="text" id="noteInput" maxlength="30" placeholder="备注（选填，例如：晨起空腹 / 昨晚聚餐）" />
+    </div>
+  </section>
+
+  <!-- 2. 期间变化与起伏曲线 -->
+  <section class="card">
+    <div class="range-bar">
+      <span class="section-title">期间变化趋势</span>
+      <div class="tabs" id="rangeTabs">
+        <button class="tab-btn" data-days="7">近7天</button>
+        <button class="tab-btn active" data-days="30">近30天</button>
+        <button class="tab-btn" data-days="90">近90天</button>
+        <button class="tab-btn" data-days="0">全部</button>
+      </div>
+    </div>
+
+    <!-- 区间三项核心指标 -->
+    <div class="metrics-grid">
+      <div class="metric-item">
+        <div class="metric-label">最新体重</div>
+        <div class="metric-value">
+          <span id="statLatest">--</span>
+          <span class="metric-unit" data-unit>kg</span>
+        </div>
+        <div class="metric-sub" id="statLatestDate">暂无记录</div>
+      </div>
+
+      <div class="metric-item">
+        <div class="metric-label" id="statChangeLabel">近30天变化</div>
+        <div class="metric-value" id="statChangeWrap">
+          <span id="statChange">--</span>
+          <span class="metric-unit" data-unit>kg</span>
+        </div>
+        <div class="metric-sub" id="statChangeSub">对比区间起点</div>
+      </div>
+
+      <div class="metric-item">
+        <div class="metric-label">区间范围 / 均值</div>
+        <div class="metric-value">
+          <span id="statAvg">--</span>
+          <span class="metric-unit" data-unit>kg</span>
+        </div>
+        <div class="metric-sub" id="statMinMax">最低 -- / 最高 --</div>
+      </div>
+    </div>
+
+    <!-- SVG 折线图 -->
+    <div class="chart-wrap" id="chartWrap">
+      <div class="chart-tooltip" id="chartTooltip"></div>
+      <svg class="chart-svg" id="chartSvg"></svg>
+    </div>
+    <div class="chart-legend">
+      <div class="legend-item"><span class="legend-dot"></span> 每日体重</div>
+      <div class="legend-item"><span class="legend-line"></span> 7日平滑均线</div>
+    </div>
+  </section>
+
+  <!-- 3. 历史记录流水 -->
+  <section class="card">
+    <div class="history-header">
+      <span class="section-title">历史明细</span>
+      <span style="font-size: 12px; color: var(--text-sub);" id="totalCountLabel">共 0 条记录</span>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </section>
+
+  <!-- 底部数据工具 -->
+  <div class="footer-tools">
+    <span>数据自动保存在当前浏览器本地</span>
+    <div class="tool-links">
+      <button class="tool-btn" id="demoDataBtn">✨ 填入演示数据看效果</button>
+      <button class="tool-btn" id="exportBtn">导出备份</button>
+      <button class="tool-btn" id="importBtn">导入恢复</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" />
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'minimal_weight_records_v1';
+  const UNIT_KEY = 'minimal_weight_unit_v1';
+
+  // 状态管理（内部统一按 kg 存储，展示时根据单位转换）
+  let records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let unit = localStorage.getItem(UNIT_KEY) || 'kg'; // 'kg' 或 '斤'
+  let currentRangeDays = 30;
+
+  // 获取本地今日日期 YYYY-MM-DD
+  function getTodayStr() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 单位换算（内部存 kg）
+  function toDisplay(kgVal) {
+    if (kgVal === null || kgVal === undefined || isNaN(kgVal)) return '--';
+    const v = unit === '斤' ? kgVal * 2 : kgVal;
+    return Number(v.toFixed(1));
+  }
+  function fromDisplay(inputVal) {
+    const v = parseFloat(inputVal);
+    return unit === '斤' ? v / 2 : v;
+  }
+
+  // DOM 节点
+  const dateInput = document.getElementById('dateInput');
+  const weightInput = document.getElementById('weightInput');
+  const noteInput = document.getElementById('noteInput');
+  const todayBadge = document.getElementById('todayBadge');
+  const entryTitle = document.getElementById('entryTitle');
+  const jumpTodayBtn = document.getElementById('jumpTodayBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const unitToggle = document.getElementById('unitToggle');
+
+  // 初始化定位到今天
+  function jumpToToday() {
+    const today = getTodayStr();
+    dateInput.value = today;
+    syncFormWithSelectedDate();
+    weightInput.focus();
+  }
+
+  // 当选择日期变化时，自动回填当天已有记录或显示上次体重作为提示
+  function syncFormWithSelectedDate() {
+    const selected = dateInput.value;
+    const today = getTodayStr();
+    const isToday = selected === today;
+
+    todayBadge.style.display = isToday ? 'inline-block' : 'none';
+    entryTitle.textContent = isToday ? '今日记录' : `补录 / 修改 (${selected.slice(5)})`;
+    jumpTodayBtn.classList.toggle('visible', !isToday);
+
+    const existing = records.find(r => r.date === selected);
+    if (existing) {
+      weightInput.value = toDisplay(existing.weight);
+      noteInput.value = existing.note || '';
+      submitBtn.textContent = isToday ? '更新今日' : '更新记录';
+    } else {
+      weightInput.value = '';
+      noteInput.value = '';
+      submitBtn.textContent = isToday ? '记录今日' : '保存补录';
+      // 占位符提示最近一次体重
+      if (records.length > 0) {
+        const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date));
+        weightInput.placeholder = `上次 ${toDisplay(sorted[0].weight)}`;
+      } else {
+        weightInput.placeholder = unit === '斤' ? '例如 130.0' : '例如 65.0';
+      }
+    }
+  }
+
+  dateInput.addEventListener('change', syncFormWithSelectedDate);
+  jumpTodayBtn.addEventListener('click', jumpToToday);
+
+  // 保存记录
+  document.getElementById('weightForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const date = dateInput.value;
+    const rawWeight = parseFloat(weightInput.value);
+    if (!date || isNaN(rawWeight)) return;
+
+    const kgWeight = Number(fromDisplay(rawWeight).toFixed(2));
+    const note = noteInput.value.trim();
+
+    const idx = records.findIndex(r => r.date === date);
+    if (idx > -1) {
+      records[idx] = { date, weight: kgWeight, note };
+    } else {
+      records.push({ date, weight: kgWeight, note });
+    }
+    records.sort((a, b) => a.date.localeCompare(b.date));
+    saveAndRender();
+    syncFormWithSelectedDate();
+  });
+
+  // 切换单位
+  unitToggle.addEventListener('click', () => {
+    unit = unit === 'kg' ? '斤' : 'kg';
+    localStorage.setItem(UNIT_KEY, unit);
+    unitToggle.textContent = `单位: ${unit}`;
+    document.getElementById('inputUnitLabel').textContent = unit;
+    document.querySelectorAll('[data-unit]').forEach(el => el.textContent = unit);
+    syncFormWithSelectedDate();
+    renderAll();
+  });
+
+  // 切换时间区间
+  document.getElementById('rangeTabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentRangeDays = parseInt(btn.dataset.days, 10);
+    renderAll();
+  });
+
+  function saveAndRender() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    renderAll();
+  }
+
+  // 根据区间过滤数据
+  function getFilteredRecords() {
+    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
+    if (currentRangeDays === 0 || sorted.length === 0) return sorted;
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - currentRangeDays + 1);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return sorted.filter(r => r.date >= cutoffStr);
+  }
+
+  // 渲染统计、图表、列表
+  function renderAll() {
+    unitToggle.textContent = `单位: ${unit}`;
+    document.getElementById('inputUnitLabel').textContent = unit;
+    document.querySelectorAll('[data-unit]').forEach(el => el.textContent = unit);
+
+    const sortedAll = [...records].sort((a, b) => a.date.localeCompare(b.date));
+    const filtered = getFilteredRecords();
+
+    // 1. 顶部统计卡片
+    const rangeName = currentRangeDays === 0 ? '全部期间' : `近${currentRangeDays}天`;
+    document.getElementById('statChangeLabel').textContent = `${rangeName}变化`;
+
+    if (sortedAll.length === 0) {
+      document.getElementById('statLatest').textContent = '--';
+      document.getElementById('statLatestDate').textContent = '暂无记录';
+      document.getElementById('statChange').textContent = '--';
+      document.getElementById('statChangeSub').textContent = '对比区间起点';
+      document.getElementById('statAvg').textContent = '--';
+      document.getElementById('statMinMax').textContent = '最低 -- / 最高 --';
+    } else {
+      const latest = sortedAll[sortedAll.length - 1];
+      document.getElementById('statLatest').textContent = toDisplay(latest.weight);
+      document.getElementById('statLatestDate').textContent =
+        latest.date === getTodayStr() ? '记录于今天' : `最近: ${latest.date.slice(5)}`;
+
+      if (filtered.length >= 2) {
+        const first = filtered[0];
+        const last = filtered[filtered.length - 1];
+        const diffKg = last.weight - first.weight;
+        const diffDisp = toDisplay(Math.abs(diffKg));
+        const sign = diffKg > 0.02 ? '+' : diffKg < -0.02 ? '-' : '';
+        const changeEl = document.getElementById('statChange');
+        changeEl.textContent = `${sign}${diffDisp}`;
+        changeEl.className = diffKg < -0.02 ? 'tag-down' : diffKg > 0.02 ? 'tag-up' : '';
+        document.getElementById('statChangeSub').textContent = `${first.date.slice(5)} 至 ${last.date.slice(5)}`;
+      } else {
+        const changeEl = document.getElementById('statChange');
+        changeEl.textContent = '0.0';
+        changeEl.className = '';
+        document.getElementById('statChangeSub').textContent = '区间内仅 1 条记录';
+      }
+
+      const targetList = filtered.length > 0 ? filtered : sortedAll;
+      const weights = targetList.map(r => r.weight);
+      const avg = weights.reduce((a, b) => a + b, 0) / weights.length;
+      const min = Math.min(...weights);
+      const max = Math.max(...weights);
+      document.getElementById('statAvg').textContent = toDisplay(avg);
+      document.getElementById('statMinMax').textContent = `最低 ${toDisplay(min)} / 最高 ${toDisplay(max)}`;
+    }
+
+    // 2. 渲染折线图
+    renderChart(filtered);
+
+    // 3. 渲染历史列表
+    renderHistory(sortedAll);
+  }
+
+  // 原生 SVG 绘制每日折线 + 7日均线
+  function renderChart(data) {
+    const svg = document.getElementById('chartSvg');
+    const tooltip = document.getElementById('chartTooltip');
+    const wrap = document.getElementById('chartWrap');
+    svg.innerHTML = '';
+
+    if (data.length === 0) {
+      svg.innerHTML = `
+        <foreignObject width="100%" height="100%">
+          <div class="empty-state">
+            <span>还没有体重记录，在上方输入今天的体重吧</span>
+            <span>或者点击底部「✨ 填入演示数据看效果」</span>
+          </div>
+        </foreignObject>`;
+      return;
+    }
+
+    const width = wrap.clientWidth || 580;
+    const height = wrap.clientHeight || 230;
+    const pad = { top: 20, right: 18, bottom: 28, left: 40 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+
+    const dispValues = data.map(d => toDisplay(d.weight));
+    let minVal = Math.min(...dispValues);
+    let maxVal = Math.max(...dispValues);
+    if (minVal === maxVal) {
+      minVal -= 1;
+      maxVal += 1;
+    } else {
+      const margin = (maxVal - minVal) * 0.15;
+      minVal -= margin;
+      maxVal += margin;
+    }
+
+    const getX = (i) => data.length === 1 ? pad.left + plotW / 2 : pad.left + (i / (data.length - 1)) * plotW;
+    const getY = (val) => pad.top + plotH - ((val - minVal) / (maxVal - minVal)) * plotH;
+
+    // 水平参考网格线 (4条)
+    for (let i = 0; i <= 3; i++) {
+      const val = minVal + ((maxVal - minVal) * i) / 3;
+      const y = getY(val);
+      svg.insertAdjacentHTML('beforeend', `
+        <line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" stroke="#f2f3f5" stroke-width="1" />
+        <text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#86909c">${val.toFixed(1)}</text>
+      `);
+    }
+
+    // X轴首尾与中间日期标签
+    const labelIndices = data.length <= 6
+      ? data.map((_, i) => i)
+      : [0, Math.floor(data.length / 2), data.length - 1];
+    labelIndices.forEach(i => {
+      const x = getX(i);
+      svg.insertAdjacentHTML('beforeend', `
+        <text x="${x}" y="${height - 6}" text-anchor="middle" font-size="11" fill="#86909c">${data[i].date.slice(5)}</text>
+      `);
+    });
+
+    // 计算 7日移动均线
+    const maPoints = data.map((_, idx) => {
+      const start = Math.max(0, idx - 6);
+      const slice = dispValues.slice(start, idx + 1);
+      const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+      return `${getX(idx)},${getY(avg)}`;
+    });
+
+    // 渐变背景定义
+    const points = dispValues.map((v, i) => `${getX(i)},${getY(v)}`);
+    if (data.length > 1) {
+      const areaPoints = `${getX(0)},${pad.top + plotH} ` + points.join(' ') + ` ${getX(data.length - 1)},${pad.top + plotH}`;
+      svg.insertAdjacentHTML('beforeend', `
+        <defs>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#2b5aed" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#2b5aed" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <polygon points="${areaPoints}" fill="url(#lineGrad)" />
+        <polyline fill="none" stroke="#ff9a2e" stroke-width="1.8" stroke-dasharray="4 3" points="${maPoints.join(' ')}" />
+        <polyline fill="none" stroke="#2b5aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${points.join(' ')}" />
+      `);
+    }
+
+    // 绘制数据圆点与交互热区
+    data.forEach((item, i) => {
+      const cx = getX(i);
+      const cy = getY(dispValues[i]);
+      const isToday = item.date === getTodayStr();
+      svg.insertAdjacentHTML('beforeend', `
+        <circle cx="${cx}" cy="${cy}" r="${isToday ? 5 : 3.5}" fill="${isToday ? '#2b5aed' : '#fff'}" stroke="#2b5aed" stroke-width="2.2" />
+        <circle cx="${cx}" cy="${cy}" r="14" fill="transparent" class="hover-dot" data-idx="${i}" style="cursor:pointer" />
+      `);
+    });
+
+    // 悬停查看单日详情，点击可直接回填编辑
+    svg.querySelectorAll('.hover-dot').forEach(dot => {
+      dot.addEventListener('mouseenter', (e) => {
+        const idx = Number(e.target.dataset.idx);
+        const d = data[idx];
+        const prev = idx > 0 ? data[idx - 1] : null;
+        let diffText = '';
+        if (prev) {
+          const diff = toDisplay(d.weight) - toDisplay(prev.weight);
+          const sign = diff > 0 ? '+' : '';
+          diffText = ` (${sign}${diff.toFixed(1)})`;
+        }
+        tooltip.innerHTML = `
+          <div><strong>${d.date}</strong> ${d.date === getTodayStr() ? '[今天]' : ''}</div>
+          <div>体重: <strong>${toDisplay(d.weight)} ${unit}</strong>${diffText}</div>
+          ${d.note ? `<div style="color:#c9cdd4">${d.note}</div>` : ''}
+        `;
+        tooltip.style.left = `${getX(idx)}px`;
+        tooltip.style.top = `${getY(dispValues[idx])}px`;
+        tooltip.style.opacity = '1';
+      });
+      dot.addEventListener('mouseleave', () => {
+        tooltip.style.opacity = '0';
+      });
+      dot.addEventListener('click', (e) => {
+        const idx = Number(e.target.dataset.idx);
+        dateInput.value = data[idx].date;
+        syncFormWithSelectedDate();
+        weightInput.focus();
+      });
+    });
+  }
+
+  // 渲染底部历史记录明细
+  function renderHistory(sortedAll) {
+    const listEl = document.getElementById('historyList');
+    document.getElementById('totalCountLabel').textContent = `共 ${sortedAll.length} 条记录`;
+
+    if (sortedAll.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-sub); font-size: 13px;">尚无历史记录</div>`;
+      return;
+    }
+
+    // 倒序展示（最新在最上面）
+    const desc = [...sortedAll].reverse();
+    listEl.innerHTML = desc.map((item, idx) => {
+      const prevItem = desc[idx + 1]; // 前一次记录
+      let pillHtml = `<span class="diff-pill diff-flat">首次</span>`;
+      if (prevItem) {
+        const diff = toDisplay(item.weight) - toDisplay(prevItem.weight);
+        if (diff < -0.04) {
+          pillHtml = `<span class="diff-pill diff-down">↓ ${Math.abs(diff).toFixed(1)}</span>`;
+        } else if (diff > 0.04) {
+          pillHtml = `<span class="diff-pill diff-up">↑ +${diff.toFixed(1)}</span>`;
+        } else {
+          pillHtml = `<span class="diff-pill diff-flat">持平</span>`;
+        }
+      }
+      const isToday = item.date === getTodayStr();
+      return `
+        <div class="history-item">
+          <div class="history-left">
+            <span class="history-date">${item.date} ${isToday ? '<small style="color:var(--primary)">(今)</small>' : ''}</span>
+            ${item.note ? `<span class="history-note">${item.note}</span>` : ''}
+          </div>
+          <div class="history-right">
+            <span class="history-weight">${toDisplay(item.weight)} <small style="font-weight:400;color:var(--text-sub)">${unit}</small></span>
+            ${pillHtml}
+            <button class="delete-btn" data-date="${item.date}" title="删除此条">×</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetDate = btn.dataset.date;
+        records = records.filter(r => r.date !== targetDate);
+        saveAndRender();
+        syncFormWithSelectedDate();
+      });
+    });
+  }
+
+  // 一键生成 25 天真实感演示数据
+  document.getElementById('demoDataBtn').addEventListener('click', () => {
+    if (records.length > 0 && !confirm('填入演示数据会覆盖当前列表，确定继续吗？')) return;
+    const demo = [];
+    const today = new Date();
+    let baseWeight = 66.8;
+    const sampleNotes = ['晨起空腹', '', '', '昨晚火锅', '', '夜跑5km', '', '', '睡眠充足', ''];
+    for (let i = 24; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      // 模拟稳中有降但日常有小起伏的真实体重曲线
+      baseWeight -= 0.06;
+      const dailyFluctuation = (Math.sin(i * 1.3) * 0.35) + (Math.random() * 0.2 - 0.1);
+      const weight = Number((baseWeight + dailyFluctuation).toFixed(1));
+      const note = sampleNotes[i % sampleNotes.length];
+      demo.push({ date: dateStr, weight, note });
+    }
+    records = demo;
+    saveAndRender();
+    jumpToToday();
+  });
+
+  // 导出 JSON 备份
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `weight-backup-${getTodayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // 导入恢复
+  const importFile = document.getElementById('importFile');
+  document.getElementById('importBtn').addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (Array.isArray(data)) {
+          records = data;
+          saveAndRender();
+          jumpToToday();
+        }
+      } catch (err) {
+        alert('备份文件格式有误');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // 窗口缩放时重绘 SVG
+  window.addEventListener('resize', () => renderChart(getFilteredRecords()));
+
+  // 启动自动跳转今日并渲染
+  jumpToToday();
+  renderAll();
+</script>
+</body>
+</html>
